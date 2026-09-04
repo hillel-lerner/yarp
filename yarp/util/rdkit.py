@@ -291,12 +291,14 @@ def rdkit_ff_opt(ypcule, lot="uff", maxiter=200):
             )
         except RuntimeError:
             return None
+
     elif lot == "mmff94":
         if not AllChem.MMFFHasAllMoleculeParams(rdmol):
             return None
         not_converged = AllChem.MMFFOptimizeMolecule(
             rdmol, maxIters=maxiter, ignoreInterfragInteractions=False
         )
+
     else:
         raise ValueError(f"unknown lot: {lot!r}")
 
@@ -354,4 +356,3 @@ def rdkit_joint_opt(conformer, target_bem, target_adj, lot="uff", maxiter=200):
         return geom_from_rdmol(rdmol)
     except (ValueError, RuntimeError):
         return None
-
