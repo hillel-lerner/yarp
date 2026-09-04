@@ -1,6 +1,7 @@
 """
 Helper functions for integration with RDKit
 """
+
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import rdchem
@@ -28,10 +29,9 @@ def has_explicit_mapped_hydrogen(smiles):
 
 
 def smiles_to_rdmol(smiles, preserve_explicit_h=False):
-    
     """
-    Converts a SMILES string to an RDKIT Mol object. If hydrogen atoms are explicityly mapped then 
-    they are preserved. Otherwise, default RDKit behavior is used to remove hydrogens and then add them back in. 
+    Converts a SMILES string to an RDKIT Mol object. If hydrogen atoms are explicityly mapped then
+    they are preserved. Otherwise, default RDKit behavior is used to remove hydrogens and then add them back in.
 
     """
     preserve_h = preserve_explicit_h or has_explicit_mapped_hydrogen(smiles)
@@ -70,7 +70,11 @@ def atom_info_from_rdmol(mol):
     for i, atom in enumerate(mol.GetAtoms()):
         element = atom.GetSymbol().lower()
         isotope = atom.GetIsotope()
-        atom_map = int(atom.GetProp("molAtomMapNumber")) if atom.HasProp("molAtomMapNumber") else None
+        atom_map = (
+            int(atom.GetProp("molAtomMapNumber"))
+            if atom.HasProp("molAtomMapNumber")
+            else None
+        )
 
         atom_info[i] = {
             "atom_index": i,
@@ -84,7 +88,10 @@ def atom_info_from_rdmol(mol):
 
     return atom_info
 
-def yarpecule_to_rdmol(elements, adj, bond_orders, atom_info=None, geo=None, sanitize=True):
+
+def yarpecule_to_rdmol(
+    elements, adj, bond_orders, atom_info=None, geo=None, sanitize=True
+):
     """
     Convert yarpecule graph data directly into an RDKit mol object.
 
@@ -125,7 +132,9 @@ def yarpecule_to_rdmol(elements, adj, bond_orders, atom_info=None, geo=None, san
     if adj.shape != (N, N):
         raise ValueError(f"adj shape {adj.shape} does not match ({N}, {N})")
     if bond_orders.shape != (N, N):
-        raise ValueError(f"bond_orders shape {bond_orders.shape} does not match ({N}, {N})")
+        raise ValueError(
+            f"bond_orders shape {bond_orders.shape} does not match ({N}, {N})"
+        )
 
     element_lower = [el.lower() for el in elements]
     elements = [el.upper() for el in element_lower]
@@ -136,6 +145,7 @@ def yarpecule_to_rdmol(elements, adj, bond_orders, atom_info=None, geo=None, san
     # load time).
     try:
         from yarp.yarpecule.lewis.bem_score import return_formals
+
         formal_charges = np.array(return_formals(bond_orders, element_lower), dtype=int)
     except (ImportError, AttributeError, TypeError, ValueError) as exc:
         warnings.warn(
@@ -165,7 +175,9 @@ def yarpecule_to_rdmol(elements, adj, bond_orders, atom_info=None, geo=None, san
                     bo = 1
                 btype = BOND_MAP.get(bo)
                 if btype is None:
-                    raise ValueError(f"Unknown bond order value at {i},{j}: {bond_orders[i, j]}")
+                    raise ValueError(
+                        f"Unknown bond order value at {i},{j}: {bond_orders[i, j]}"
+                    )
                 rw.AddBond(i, j, btype)
 
     mol = rw.GetMol()
@@ -175,7 +187,12 @@ def yarpecule_to_rdmol(elements, adj, bond_orders, atom_info=None, geo=None, san
     if sanitize:
         try:
             Chem.SanitizeMol(mol)
-        except (rdchem.KekulizeException, rdchem.AtomValenceException, ValueError, RuntimeError) as e:
+        except (
+            rdchem.KekulizeException,
+            rdchem.AtomValenceException,
+            ValueError,
+            RuntimeError,
+        ) as e:
             warnings.warn(
                 f"Sanitization failed for elements {''.join(elements)}: {type(e).__name__}: {e}"
             )
@@ -185,7 +202,9 @@ def yarpecule_to_rdmol(elements, adj, bond_orders, atom_info=None, geo=None, san
         geo = np.asarray(geo, dtype=float)
         conf = Chem.Conformer(N)
         for idx in range(N):
-            conf.SetAtomPosition(idx, Point3D(float(geo[idx][0]), float(geo[idx][1]), float(geo[idx][2])))
+            conf.SetAtomPosition(
+                idx, Point3D(float(geo[idx][0]), float(geo[idx][1]), float(geo[idx][2]))
+            )
         conf.Set3D(True)
         mol.RemoveAllConformers()
         mol.AddConformer(conf, assignId=True)
@@ -205,6 +224,7 @@ def yarpecule_to_rdmol(elements, adj, bond_orders, atom_info=None, geo=None, san
                 atom.SetProp("molAtomMapNumber", str(atom_info[idx]["atom_map"]))
 
     return mol
+
 
 def geom_from_rdmol(mol, conf_index=0):
     """
@@ -231,8 +251,9 @@ def geom_from_rdmol(mol, conf_index=0):
 
     return geo
 
-def rdkit_ff_opt(ypcule, lot='uff', maxiter=200):
-    '''
+
+def rdkit_ff_opt(ypcule, lot="uff", maxiter=200):
+    """
     Perform low-level level geometry optimization of yarpecule geometry
     via RDKit mol object.
 
@@ -245,30 +266,48 @@ def rdkit_ff_opt(ypcule, lot='uff', maxiter=200):
         Level of theory used for quick optimization
         ERM: mmff94 has a tendency to reform the reactant geometry
         when used to generate initial geom of products post product enumeration
-    
+
     maxiter : int
         Maximum number of optimization steps
-    
+
     Returns:
     --------
     opt_geom : nd array (N x 3)
         optimized geometry
-    '''
+    """
 
-    rdmol = yarpecule_to_rdmol(elements=ypcule.elements, adj=ypcule.adj_mat, bond_orders=ypcule.bond_mats[0],
-                               atom_info=ypcule._atom_info, geo=ypcule.geo)
+    rdmol = yarpecule_to_rdmol(
+        elements=ypcule.elements,
+        adj=ypcule.adj_mat,
+        bond_orders=ypcule.bond_mats[0],
+        atom_info=ypcule._atom_info,
+        geo=ypcule.geo,
+    )
 
     if lot == "uff":
-        opt = AllChem.UFFOptimizeMolecule(rdmol, maxIters=maxiter, ignoreInterfragInteractions=False)
+        try:
+            not_converged = AllChem.UFFOptimizeMolecule(
+                rdmol, maxIters=maxiter, ignoreInterfragInteractions=False
+            )
+        except RuntimeError:
+            return None
     elif lot == "mmff94":
-        opt = AllChem.MMFFOptimizeMolecule(rdmol, maxIters=maxiter, ignoreInterfragInteractions=False)
+        if not AllChem.MMFFHasAllMoleculeParams(rdmol):
+            return None
+        not_converged = AllChem.MMFFOptimizeMolecule(
+            rdmol, maxIters=maxiter, ignoreInterfragInteractions=False
+        )
+    else:
+        raise ValueError(f"unknown lot: {lot!r}")
 
-    opt_geom = geom_from_rdmol(rdmol)
+    if not_converged:
+        print(f"   + WARNING: {lot} did not converge in {maxiter} iterations")
 
-    return opt_geom
+    return geom_from_rdmol(rdmol)
+
 
 def rdkit_joint_opt(conformer, target_bem, target_adj, lot="uff", maxiter=200):
-    '''
+    """
     Attempt to bias conformer geometry toward a target bond-electron matrix
     (BEM) using RDKit.
 
@@ -294,16 +333,25 @@ def rdkit_joint_opt(conformer, target_bem, target_adj, lot="uff", maxiter=200):
     opt_geom : nd array (N x 3) or None
         optimized geometry, or None if RDKit could not build/optimize a mol
         from the imposed (possibly non-physical, mid-reaction) target bonding
-    '''
+    """
     try:
-        rdmol = yarpecule_to_rdmol(elements=conformer.elements, adj=target_adj,
-                                    bond_orders=target_bem, geo=conformer.geo)
+        rdmol = yarpecule_to_rdmol(
+            elements=conformer.elements,
+            adj=target_adj,
+            bond_orders=target_bem,
+            geo=conformer.geo,
+        )
 
         if lot == "uff":
-            AllChem.UFFOptimizeMolecule(rdmol, maxIters=maxiter, ignoreInterfragInteractions=False)
+            AllChem.UFFOptimizeMolecule(
+                rdmol, maxIters=maxiter, ignoreInterfragInteractions=False
+            )
         elif lot == "mmff94":
-            AllChem.MMFFOptimizeMolecule(rdmol, maxIters=maxiter, ignoreInterfragInteractions=False)
+            AllChem.MMFFOptimizeMolecule(
+                rdmol, maxIters=maxiter, ignoreInterfragInteractions=False
+            )
 
         return geom_from_rdmol(rdmol)
     except (ValueError, RuntimeError):
         return None
+
