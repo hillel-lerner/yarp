@@ -513,16 +513,22 @@ def progress_yarp(work_dir: Path):
 
                 # Generate and Submit
                 print(f"   * [{rxn_hash}] \tSubmitting task '{task_id}'...")
-                calc.generate_input()
-                script_path = calc.write_submission_script()
-
-                job_id = job_manager.submit(script_path)
+                try:
+                    calc.generate_input()
+                    script_path = calc.write_submission_script()
+                    job_id = job_manager.submit(script_path)
+                except Exception as e:
+                    meta["status"] = "finished_with_error"
+                    meta["error_log"] = f"{type(e).__name__} during submission: {e}"
+                    failed_rxns[rxn_hash] = rxn_obj
+                    print(f"   * [{rxn_hash}] \tTask '{task_id}' failed: {e}")
+                    continue
 
                 if job_id:
                     meta["status"] = "submitted"
                     meta["job_id"] = job_id
                     meta["scratch_dir"] = str(scratch_path)
-                    active_jobs += 1 # Increment our tally!
+                    active_jobs += 1
                 else:
                     meta["status"] = "finished_with_error"
                     meta["error_log"] = "Job manager failed to submit job."
