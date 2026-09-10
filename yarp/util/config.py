@@ -251,6 +251,7 @@ class ConformerConfig:
     n_unpaired_electrons: int = None
     energy_window: float = 6.0
     solvent: Optional[Dict[str, str]] = None
+    runtype: str = None
 
     n_cpus: int = 1
     mem_per_cpu: int = 4000

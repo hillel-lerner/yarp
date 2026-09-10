@@ -144,6 +144,8 @@ class CrestConfCalculator(ConfTask):
 
         # molecular descriptors
         cmd += f" --chrg {self.config.charge} --uhf {self.config.n_unpaired_electrons}"
+        if getattr(self.config, "runtype", None):
+            cmd += f" --{self.config.runtype}"
 
         if self.config.seed is not None:
             cmd += f" --seed {self.config.seed}"
