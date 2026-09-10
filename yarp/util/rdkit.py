@@ -308,7 +308,7 @@ def rdkit_ff_opt(ypcule, lot="uff", maxiter=200):
     return geom_from_rdmol(rdmol)
 
 
-def rdkit_joint_opt(conformer, target_bem, target_adj, lot="uff", maxiter=200):
+def rdkit_joint_opt(conformer, target_bem, target_adj, lot="uff", maxiter=2000):
     """
     Attempt to bias conformer geometry toward a target bond-electron matrix
     (BEM) using RDKit.
